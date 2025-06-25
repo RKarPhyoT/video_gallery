@@ -88,7 +88,7 @@ jobs:
         id: create-release
         uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
           tag_name: ${{ steps.tag.outputs.tag-name }}
           release_name: "APK Build ${{ steps.tag.outputs.tag-name }}"
@@ -115,7 +115,7 @@ jobs:
       - name: 📤 Upload Debug APK to Release
         uses: actions/upload-release-asset@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
           upload_url: ${{ steps.create-release.outputs.upload_url }}
           asset_path: build/app/outputs/flutter-apk/app-debug.apk
@@ -125,7 +125,7 @@ jobs:
       - name: 📤 Upload Release APK to Release
         uses: actions/upload-release-asset@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
           upload_url: ${{ steps.create-release.outputs.upload_url }}
           asset_path: build/app/outputs/flutter-apk/app-release.apk
