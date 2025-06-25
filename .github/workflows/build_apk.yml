@@ -1,0 +1,185 @@
+name: Build APK and Notify Telegram
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: # Manual trigger
+
+# Only run if commit message contains 'build_apk'
+jobs:
+  check-commit:
+    runs-on: ubuntu-latest
+    outputs:
+      should-build: ${{ steps.check.outputs.should-build }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check commit message
+        id: check
+        run: |
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          if [[ "$COMMIT_MSG" == *"build_apk"* ]]; then
+            echo "should-build=true" >> $GITHUB_OUTPUT
+            echo "✅ Commit contains 'build_apk' - proceeding with build"
+          else
+            echo "should-build=false" >> $GITHUB_OUTPUT
+            echo "❌ Commit doesn't contain 'build_apk' - skipping build"
+          fi
+
+  build-apk:
+    needs: check-commit
+    if: needs.check-commit.outputs.should-build == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📦 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: ☕ Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+          channel: 'stable'
+          cache: true
+
+      - name: 📋 Flutter Doctor
+        run: flutter doctor -v
+
+      - name: 📦 Get Dependencies
+        run: flutter pub get
+
+      - name: 🔍 Analyze Code
+        run: flutter analyze
+        
+      # - name: 🏗️ Build APK (Debug)
+      #   run: flutter build apk --debug
+        
+      - name: 🏗️ Build APK (Release)
+        run: flutter build apk --release --split-per-abi
+
+      - name: 📊 Get APK Info
+        id: apk-info
+        run: |
+          DEBUG_SIZE=$(ls -lah build/app/outputs/flutter-apk/app-debug.apk | awk '{print $5}')
+          RELEASE_SIZE=$(ls -lah build/app/outputs/flutter-apk/app-release.apk | awk '{print $5}' || echo "N/A")
+          
+          echo "debug-size=$DEBUG_SIZE" >> $GITHUB_OUTPUT
+          echo "release-size=$RELEASE_SIZE" >> $GITHUB_OUTPUT
+          echo "build-number=$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
+
+      - name: 🏷️ Create Release Tag
+        id: tag
+        run: |
+          TAG_NAME="v1.0.$(date +%Y%m%d%H%M%S)"
+          echo "tag-name=$TAG_NAME" >> $GITHUB_OUTPUT
+
+      - name: 📱 Upload APK Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-apks-${{ steps.apk-info.outputs.build-number }}
+          path: |
+            build/app/outputs/flutter-apk/*.apk
+          retention-days: 30
+
+      - name: 🚀 Create GitHub Release
+        id: create-release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.tag.outputs.tag-name }}
+          release_name: "APK Build ${{ steps.tag.outputs.tag-name }}"
+          body: |
+            ## 📱 Flutter APK Build
+            
+            **Commit:** ${{ github.event.head_commit.message }}
+            **SHA:** `${{ github.sha }}`
+            **Branch:** `${{ github.ref_name }}`
+            **Build Time:** `$(date -u +"%Y-%m-%d %H:%M:%S UTC")`
+            
+            ### 📊 Build Info:
+            - **Debug APK Size:** ${{ steps.apk-info.outputs.debug-size }}
+            - **Release APK Size:** ${{ steps.apk-info.outputs.release-size }}
+            - **Flutter Version:** 3.19.0
+            
+            ### 📥 Downloads:
+            - Debug APK: Available in artifacts
+            - Release APK: Available in artifacts
+            
+          draft: false
+          prerelease: false
+
+      - name: 📤 Upload Debug APK to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: build/app/outputs/flutter-apk/app-debug.apk
+          asset_name: video-gallery-debug.apk
+          asset_content_type: application/vnd.android.package-archive
+
+      - name: 📤 Upload Release APK to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: build/app/outputs/flutter-apk/app-release.apk
+          asset_name: video-gallery-release.apk
+          asset_content_type: application/vnd.android.package-archive
+
+      - name: ✅ Send Success Notification to Telegram
+        if: success()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d parse_mode="HTML" \
+            -d text="
+          ✅ <b>Flutter APK Build SUCCESS</b>
+          
+          📱 <b>Project:</b> ${{ github.repository }}
+          🌿 <b>Branch:</b> ${{ github.ref_name }}
+          💬 <b>Commit:</b> ${{ github.event.head_commit.message }}
+          👤 <b>Author:</b> ${{ github.event.head_commit.author.name }}
+          🔗 <b>SHA:</b> <code>${{ github.sha }}</code>
+          
+          📊 <b>Build Info:</b>
+          • Debug APK: ${{ steps.apk-info.outputs.debug-size }}
+          • Release APK: ${{ steps.apk-info.outputs.release-size }}
+          • Build #: ${{ steps.apk-info.outputs.build-number }}
+          
+          🚀 <b>Release:</b> ${{ steps.tag.outputs.tag-name }}
+          📥 <b>Download:</b> <a href='${{ steps.create-release.outputs.html_url }}'>GitHub Release</a>
+          
+          ⏱️ <b>Build Time:</b> $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+          "
+
+      - name: ❌ Send Failure Notification to Telegram
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d parse_mode="HTML" \
+            -d text="
+          ❌ <b>Flutter APK Build FAILED</b>
+          
+          📱 <b>Project:</b> ${{ github.repository }}
+          🌿 <b>Branch:</b> ${{ github.ref_name }}
+          💬 <b>Commit:</b> ${{ github.event.head_commit.message }}
+          👤 <b>Author:</b> ${{ github.event.head_commit.author.name }}
+          🔗 <b>SHA:</b> <code>${{ github.sha }}</code>
+          
+          🔍 <b>Check logs:</b> <a href='${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'>View Details</a>
+          
+          ⏱️ <b>Failed At:</b> $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+          "
