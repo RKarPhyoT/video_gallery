@@ -56,12 +56,6 @@ jobs:
 
       - name: 📦 Get Dependencies
         run: flutter pub get
-
-      - name: 🔍 Analyze Code
-        run: flutter analyze
-        
-      # - name: 🏗️ Build APK (Debug)
-      #   run: flutter build apk --debug
         
       - name: 🏗️ Build APK (Release)
         run: flutter build apk --release --split-per-abi
