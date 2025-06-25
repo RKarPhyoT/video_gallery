@@ -47,7 +47,7 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.1'
+          flutter-version: '3.32.4'
           channel: 'stable'
           cache: true
 
@@ -109,7 +109,7 @@ jobs:
             ### 📊 Build Info:
             - **Debug APK Size:** ${{ steps.apk-info.outputs.debug-size }}
             - **Release APK Size:** ${{ steps.apk-info.outputs.release-size }}
-            - **Flutter Version:** 3.22.1
+            - **Flutter Version:** 3.32.4
             
             ### 📥 Downloads:
             - Debug APK: Available in artifacts
