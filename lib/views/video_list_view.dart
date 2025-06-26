@@ -23,15 +23,15 @@ class VideoListView extends StatelessWidget {
       ),
       backgroundColor: Colors.grey[100],
       body: Obx(() {
-        if (controller.isLoading.value && controller.videos.isEmpty) {
+        if (controller.isLoading.value && controller.groupVideos.isEmpty) {
           return _buildLoadingIndicator();
         }
 
         if (controller.errorMessage.value.isNotEmpty &&
-            controller.videos.isEmpty) {
+            controller.groupVideos.isEmpty) {
           return _buildErrorWidget(controller);
         }
-        if (!controller.isLoading.value && controller.videos.isEmpty) {
+        if (!controller.isLoading.value && controller.groupVideos.isEmpty) {
           return _retryWidget(controller);
         }
         return RefreshIndicator(
@@ -42,25 +42,40 @@ class VideoListView extends StatelessWidget {
             slivers: [
               SliverPadding(
                 padding: const EdgeInsets.all(8.0),
-                sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 8.0,
-                    mainAxisSpacing: 8.0,
-                    childAspectRatio: 0.75,
-                  ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      if (index >= controller.videos.length) {
-                        return _buildLoadingCard();
-                      }
-                      return VideoCard(video: controller.videos[index]);
-                    },
-                    childCount:
-                        controller.videos.length +
-                        (controller.isLoadingMore.value ? 10 : 0),
-                  ),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate((context, groupIndex) {
+                    final group =
+                        controller.groupVideos[groupIndex.toString()] ?? [];
+                    return Row(
+                      children:
+                          group
+                              .map(
+                                (video) =>
+                                    Expanded(child: VideoCard(video: video)),
+                              )
+                              .toList(),
+                    );
+                  }, childCount: controller.groupVideos.length),
                 ),
+                //  SliverGrid(
+                //   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                //     crossAxisCount: 2,
+                //     crossAxisSpacing: 8.0,
+                //     mainAxisSpacing: 8.0,
+                //     childAspectRatio: 0.75,
+                //   ),
+                //   delegate: SliverChildBuilderDelegate(
+                //     (context, index) {
+                //       if (index >= controller.videos.length) {
+                //         return _buildLoadingCard();
+                //       }
+                //       return VideoCard(video: controller.videos[index]);
+                //     },
+                //     childCount:
+                //         controller.videos.length +
+                //         (controller.isLoadingMore.value ? 10 : 0),
+                //   ),
+                // ),
               ),
               if (controller.isLoadingMore.value)
                 const SliverToBoxAdapter(
@@ -125,42 +140,42 @@ class VideoListView extends StatelessWidget {
     );
   }
 
-  Widget _buildLoadingCard() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12),
-                ),
-              ),
-              child: Center(
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.0,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[500]!),
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(height: 12, color: Colors.grey[300]),
-                const SizedBox(height: 4),
-                Container(height: 10, width: 100, color: Colors.grey[300]),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // Widget _buildLoadingCard() {
+  //   return Card(
+  //     elevation: 4,
+  //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  //     child: Column(
+  //       crossAxisAlignment: CrossAxisAlignment.stretch,
+  //       children: [
+  //         Expanded(
+  //           child: Container(
+  //             decoration: BoxDecoration(
+  //               color: Colors.grey[300],
+  //               borderRadius: const BorderRadius.vertical(
+  //                 top: Radius.circular(12),
+  //               ),
+  //             ),
+  //             child: Center(
+  //               child: CircularProgressIndicator(
+  //                 strokeWidth: 2.0,
+  //                 valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[500]!),
+  //               ),
+  //             ),
+  //           ),
+  //         ),
+  //         Padding(
+  //           padding: const EdgeInsets.all(8.0),
+  //           child: Column(
+  //             crossAxisAlignment: CrossAxisAlignment.start,
+  //             children: [
+  //               Container(height: 12, color: Colors.grey[300]),
+  //               const SizedBox(height: 4),
+  //               Container(height: 10, width: 100, color: Colors.grey[300]),
+  //             ],
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 }

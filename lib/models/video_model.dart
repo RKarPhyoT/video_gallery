@@ -41,15 +41,15 @@ class VideoModel {
 
   VideoModel copyWith({String? localThumbnailPath, bool? isLoadingThumbnail}) {
     return VideoModel(
-      id: this.id,
-      title: this.title,
-      description: this.description,
-      thumbnailUrl: this.thumbnailUrl,
-      videoUrl: this.videoUrl,
-      duration: this.duration,
-      views: this.views,
-      userImage: this.userImage,
-      userName: this.userName,
+      id: id,
+      title: title,
+      description: description,
+      thumbnailUrl: thumbnailUrl,
+      videoUrl: videoUrl,
+      duration: duration,
+      views: views,
+      userImage: userImage,
+      userName: userName,
       localThumbnailPath: localThumbnailPath ?? this.localThumbnailPath,
       isLoadingThumbnail: isLoadingThumbnail ?? this.isLoadingThumbnail,
     );
